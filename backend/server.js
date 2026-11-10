@@ -1,21 +1,12 @@
+require("dotenv").config();
 
 const mongoose = require("mongoose");
 const express = require("express");
-const Product = require("./models/Product");
+const productRoutes = require("./routes/products");
 
 const app = express();
-
-mongoose.connect("mongodb://127.0.0.1:27017/agrohub");
-
-const connection = mongoose.connection;
-
-connection.on("connected", () => {
-    console.log("MongoDB connected successfully");
-});
-
-connection.on("error", (err) => {
-    console.log("MongoDB connection error:", err);
-});
+const PORT = process.env.PORT || 3000;
+const MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/agrohub";
 
 app.use(express.json());
 
@@ -23,28 +14,26 @@ app.get("/", (req, res) => {
     res.send("Welcome to AgroHub!");
 });
 
-app.get("/api/products", async (req, res) => {
-    try {
-        const products = await Product.find();
-        res.json(products);
-    } catch (err) {
-        res.status(500).json({ message: err.message });
+app.use("/api/products", productRoutes);
+
+// Central error handler
+app.use((err, req, res, next) => {
+    if (err.name === "ValidationError") {
+        const messages = Object.values(err.errors).map((e) => e.message);
+        return res.status(400).json({ message: messages.join(", ") });
     }
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
 });
 
-app.post("/api/products", async (req, res) => {
-    try {
-        console.log("POST request received:", req.body);
-        const newProduct = new Product(req.body);
-
-        await newProduct.save();
-
-        res.json(newProduct);
-    } catch (err) {
-        res.status(400).json({ message: err.message });
-    }
-});
-
-app.listen(3000, () => {
-    console.log("Server running on http://localhost:3000");
-});
+// Only start listening once MongoDB is connected
+mongoose
+    .connect(MONGO_URI)
+    .then(() => {
+        console.log("MongoDB connected successfully");
+        app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
+    })
+    .catch((err) => {
+        console.error("MongoDB connection error:", err.message);
+        process.exit(1);
+    });

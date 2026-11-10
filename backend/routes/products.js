@@ -1,6 +1,7 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const Product = require("../models/Product");
+const { requireAuth, requireAdmin } = require("../middleware/auth");
 
 const router = express.Router();
 
@@ -12,7 +13,6 @@ function pickFields(body) {
     return data;
 }
 
-// Reject malformed ids before hitting the database
 function validateId(req, res, next) {
     if (!mongoose.isValidObjectId(req.params.id)) {
         return res.status(400).json({ message: "Invalid product id" });
@@ -20,9 +20,7 @@ function validateId(req, res, next) {
     next();
 }
 
-// Express 5 forwards errors from async handlers automatically,
-// so only validation errors need special handling (see server.js).
-
+// Public: anyone can browse
 router.get("/", async (req, res) => {
     const filter = {};
     if (req.query.category) filter.category = req.query.category;
@@ -36,12 +34,13 @@ router.get("/:id", validateId, async (req, res) => {
     res.json(product);
 });
 
-router.post("/", async (req, res) => {
+// Admin only: create, update, delete
+router.post("/", requireAuth, requireAdmin, async (req, res) => {
     const product = await Product.create(pickFields(req.body));
     res.status(201).json(product);
 });
 
-router.put("/:id", validateId, async (req, res) => {
+router.put("/:id", requireAuth, requireAdmin, validateId, async (req, res) => {
     const product = await Product.findByIdAndUpdate(req.params.id, pickFields(req.body), {
         new: true,
         runValidators: true
@@ -50,7 +49,7 @@ router.put("/:id", validateId, async (req, res) => {
     res.json(product);
 });
 
-router.delete("/:id", validateId, async (req, res) => {
+router.delete("/:id", requireAuth, requireAdmin, validateId, async (req, res) => {
     const product = await Product.findByIdAndDelete(req.params.id);
     if (!product) return res.status(404).json({ message: "Product not found" });
     res.json({ message: "Product deleted" });

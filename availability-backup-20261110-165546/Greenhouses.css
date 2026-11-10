@@ -1,0 +1,18 @@
+.gh { text-align:left; max-width:1200px; margin:2rem auto; color:#193d2c; }
+.gh * { box-sizing:border-box; }
+.gh-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,270px),1fr)); gap:1.25rem; margin:1.25rem 0; align-items:start; }
+.gh-card { background:#fff; border:1px solid #c9ddcc; border-radius:16px; padding:1.5rem; box-shadow:0 5px 20px #153c2010; min-width:0; overflow-wrap:anywhere; }
+.gh-card h3,.gh-card h4 { margin:.8rem 0; }
+.gh-summary .gh-card { display:grid; gap:.4rem; }
+.gh-summary strong { font-size:2rem; }
+.gh-badge { display:inline-block; background:#e4efdf; border-radius:20px; padding:.3rem .7rem; text-transform:capitalize; }
+.gh-form { display:grid; gap:1rem; }
+.gh label { display:grid; gap:.4rem; font-weight:600; }
+.gh input,.gh select,.gh textarea { width:100%; padding:.7rem; border:1px solid #8ba58e; border-radius:8px; background:white; color:#183c28; font:inherit; }
+.gh textarea { min-height:90px; resize:vertical; }
+.gh button { background:#235f3b; color:white; border:0; border-radius:8px; padding:.7rem 1rem; cursor:pointer; white-space:normal; }
+.gh button:disabled { opacity:.5; cursor:default; }
+.gh button:focus-visible,.gh input:focus-visible,.gh select:focus-visible,.gh textarea:focus-visible { outline:3px solid #ca941d; outline-offset:3px; }
+.gh-actions { display:flex; flex-wrap:wrap; gap:.6rem; margin-top:1rem; }
+.gh-rental { margin:2rem 0; }
+@media(max-width:600px) { .gh-grid { grid-template-columns:1fr; } .gh-card { padding:1rem; } }

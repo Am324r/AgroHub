@@ -27,6 +27,7 @@ app.get("/", (req, res) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api/products", productRoutes);
+app.use("/api/orders", require("./routes/orders"));
 app.use("/api/contracts", contractRoutes);
 app.use("/api/greenhouses", greenhouseRoutes);
 app.use("/api/hangars", require("./routes/hangars"));
@@ -59,7 +60,9 @@ app.use((err, req, res, next) => {
 
 mongoose
     .connect(MONGO_URI)
-    .then(() => {
+    .then(async () => {
+        await require("./models/Order").init();
+        await require("./services/orderStock").recoverOrders();
         console.log("MongoDB connected successfully");
 
         app.listen(PORT, () => {

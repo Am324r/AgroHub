@@ -1,14 +1,22 @@
 import { useState, useEffect } from "react";
-import Contracts from "./Contracts";
-import Greenhouses from "./Greenhouses";
-import Hangars from "./Hangars";
+
+
+
+import AdminDashboard from "./AdminDashboard";
+import Home from "./Home";
+import AuthPage from "./AuthPage";
+import CustomerDashboard from "./CustomerDashboard";
 
 const EMPTY_FORM = {
     name: "",
     category: "sheep",
     description: "",
     price: "",
-    quantity: ""
+    quantity: "",
+    unit: "kg",
+    minWeightKg: "",
+    maxWeightKg: "",
+    version: 0
 };
 
 const EMPTY_AUTH = {
@@ -19,7 +27,8 @@ const EMPTY_AUTH = {
 
 function App() {
     const [page, setPage] = useState("home");
-    const [service, setService] = useState("");
+    const [pendingTab, setPendingTab] = useState("overview");
+    const [authBusy, setAuthBusy] = useState(false);
 
     const [products, setProducts] = useState([]);
     const [form, setForm] = useState(EMPTY_FORM);
@@ -34,8 +43,16 @@ function App() {
     const isAdmin = user?.role === "admin";
 
     function navigate(nextPage) {
-        setPage(nextPage);
         setMessage("");
+        if (nextPage === "home") { setPage("home"); return; }
+        setPendingTab(["products", "services"].includes(nextPage) ? nextPage : "overview");
+        setPage("account");
+    }
+
+    function openService(serviceName) {
+        setPendingTab(serviceName);
+        setMessage("");
+        setPage("account");
     }
 
     function api(url, options = {}) {
@@ -60,6 +77,7 @@ function App() {
 
     useEffect(() => {
         if (!token) return;
+        let active = true;
 
         fetch("/api/auth/me", {
             headers: { Authorization: `Bearer ${token}` }
@@ -68,15 +86,19 @@ function App() {
                 if (!res.ok) throw new Error("Invalid session");
                 return res.json();
             })
-            .then((data) => setUser(data.user))
+            .then((data) => { if (active) setUser(data.user); })
             .catch(() => {
+                if (!active) return;
                 localStorage.removeItem("token");
                 setToken(null);
                 setUser(null);
             });
+        return () => { active = false; };
     }, [token]);
 
     function logout() {
+        setPendingTab("overview");
+        setAuthForm(EMPTY_AUTH);
         localStorage.removeItem("token");
         setToken(null);
         setUser(null);
@@ -85,7 +107,9 @@ function App() {
 
     async function submitAuth(e) {
         e.preventDefault();
-
+        if (authBusy) return;
+        setAuthBusy(true);
+        setMessage("");
         try {
             const response = await fetch(`/api/auth/${authMode}`, {
                 method: "POST",
@@ -104,14 +128,22 @@ function App() {
             setUser(data.user);
             setAuthForm(EMPTY_AUTH);
             setMessage(`Welcome, ${data.user.name}!`);
-            setPage("home");
+            setPage("dashboard");
         } catch (err) {
             setMessage(err.message);
+        } finally {
+            setAuthBusy(false);
         }
     }
 
+    async function refreshProducts() {
+        const res = await fetch('/api/products');
+        if (!res.ok) throw new Error('Could not refresh products');
+        setProducts(await res.json());
+    }
+
     function updateField(field, value) {
-        setForm({ ...form, [field]: value });
+        setForm({ ...form, [field]: value, ...(field === "category" && value === "sheep" ? {unit:"kg"} : {}) });
     }
 
     function startEdit(product) {
@@ -122,7 +154,11 @@ function App() {
             category: product.category,
             description: product.description || "",
             price: String(product.price),
-            quantity: String(product.quantity)
+            quantity: String(product.quantity),
+            unit: product.unit || "kg",
+            minWeightKg: product.minWeightKg ?? "",
+            maxWeightKg: product.maxWeightKg ?? "",
+            version: product.__v ?? 0
         });
 
         setMessage("");
@@ -139,7 +175,9 @@ function App() {
         const payload = {
             ...form,
             price: Number(form.price),
-            quantity: Number(form.quantity)
+            quantity: Number(form.quantity),
+            minWeightKg: Number(form.minWeightKg),
+            maxWeightKg: Number(form.maxWeightKg)
         };
 
         const isEdit = editingId !== null;
@@ -198,384 +236,54 @@ function App() {
         }
     }
 
+    // Show the admin dashboard after all hooks and handler functions.
+    if (isAdmin) {
+        return (
+            <AdminDashboard
+                token={token}
+                user={user}
+                logout={logout}
+                products={products}
+                form={form}
+                editingId={editingId}
+                message={message}
+                updateField={updateField}
+                saveProduct={saveProduct}
+                startEdit={startEdit}
+                deleteProduct={deleteProduct}
+                cancelEdit={cancelEdit}
+                onStockChange={refreshProducts}
+            />
+        );
+    }
+
+    if (token && !user) {
+        return <main className="auth-page"><section className="auth-card"><h2>Opening your account…</h2><p>Checking your saved session.</p></section></main>;
+    }
+
+    if (user) {
+        return <CustomerDashboard key={user.id || user._id || token} token={token} user={user} logout={logout} products={products} onStockChange={refreshProducts} initialTab={pendingTab} />;
+    }
+
+    if (page === "account") {
+        return <AuthPage mode={authMode} form={authForm} setForm={setAuthForm} setMode={mode => { setAuthMode(mode); setMessage(""); }} submit={submitAuth} busy={authBusy} message={message} onHome={() => navigate("home")} />;
+    }
+
     return (
-        <div>
+        <div className="public-shell">
             <header>
                 <h1>AgroHub</h1>
                 <p>Your Farm Marketplace and Services</p>
-
                 <nav>
-                    <button onClick={() => navigate("home")}>
-                        Home
-                    </button>{" "}
-
-                    <button onClick={() => navigate("products")}>
-                        Shop Products
-                    </button>{" "}
-
-                    <button onClick={() => navigate("services")}>
-                        Farm Services
-                    </button>{" "}
-
-                    {user ? (
-                        <button onClick={logout}>Logout</button>
-                    ) : (
-                        <button onClick={() => navigate("account")}>
-                            Login / Register
-                        </button>
-                    )}
+                    <button onClick={() => navigate("home")}>Home</button>
+                    <button onClick={() => navigate("products")}>Shop Products</button>
+                    <button onClick={() => navigate("services")}>Farm Services</button>
+                    <button onClick={() => navigate("account")}>Login / Register</button>
                 </nav>
-
-                {user && (
-                    <p>
-                        Logged in as {user.name} ({user.role})
-                    </p>
-                )}
             </header>
-
-            <hr />
-
             <p role="status">{message}</p>
-
-            {/* HOME PAGE */}
-            {page === "home" && (
-                <section>
-                    <h2>Welcome to AgroHub</h2>
-
-                    <p>
-                        Buy farm products or rent agricultural spaces
-                        from our farm.
-                    </p>
-
-                    <h2>What are you looking for?</h2>
-
-                    <div>
-                        <h3>Shop Products</h3>
-
-                        <p>
-                            Browse sheep, clover, and seedlings.
-                            View their prices and availability.
-                        </p>
-
-                        <button onClick={() => navigate("products")}>
-                            Browse Products
-                        </button>
-                    </div>
-
-                    <hr />
-
-                    <div>
-                        <h3>Farm Services</h3>
-
-                        <p>
-                            Rent a sheep hangar with a caretaker and
-                            optional feeding, or rent a greenhouse
-                            for your crops.
-                        </p>
-
-                        <button onClick={() => navigate("services")}>
-                            Explore Services
-                        </button>
-                    </div>
-                </section>
-            )}
-
-            {/* ACCOUNT PAGE */}
-            {page === "account" && !user && (
-                <section>
-                    <h2>
-                        {authMode === "login" ? "Login" : "Register"}
-                    </h2>
-
-                    <form onSubmit={submitAuth}>
-                        {authMode === "register" && (
-                            <input
-                                type="text"
-                                placeholder="Name"
-                                value={authForm.name}
-                                onChange={(e) =>
-                                    setAuthForm({
-                                        ...authForm,
-                                        name: e.target.value
-                                    })
-                                }
-                                required
-                            />
-                        )}
-
-                        <input
-                            type="email"
-                            placeholder="Email"
-                            value={authForm.email}
-                            onChange={(e) =>
-                                setAuthForm({
-                                    ...authForm,
-                                    email: e.target.value
-                                })
-                            }
-                            required
-                        />
-
-                        <input
-                            type="password"
-                            placeholder="Password (min 6 characters)"
-                            minLength="6"
-                            value={authForm.password}
-                            onChange={(e) =>
-                                setAuthForm({
-                                    ...authForm,
-                                    password: e.target.value
-                                })
-                            }
-                            required
-                        />
-
-                        <button type="submit">
-                            {authMode === "login" ? "Login" : "Register"}
-                        </button>
-                    </form>
-
-                    <button
-                        onClick={() =>
-                            setAuthMode(
-                                authMode === "login" ? "register" : "login"
-                            )
-                        }
-                    >
-                        {authMode === "login"
-                            ? "Need an account? Register"
-                            : "Have an account? Login"}
-                    </button>
-                </section>
-            )}
-
-            {/* PRODUCTS PAGE */}
-            {page === "products" && (
-                <section>
-                    <h2>Shop Farm Products</h2>
-                    <p>Explore the farm's available products.</p>
-
-                    <h3>Available Products</h3>
-
-                    {products.length === 0 && (
-                        <p>No products available.</p>
-                    )}
-
-                    <ul>
-                        {products.map((product) => (
-                            <li key={product._id}>
-                                <strong>{product.name}</strong>
-                                {" "}({product.category})
-                                {" - "}{product.price} EGP
-                                {" - "}
-
-                                {product.quantity > 0
-                                    ? `Available: ${product.quantity}`
-                                    : "Out of stock"}
-
-                                {product.description && (
-                                    <p>{product.description}</p>
-                                )}
-
-                                {isAdmin && (
-                                    <>
-                                        <button
-                                            onClick={() => startEdit(product)}
-                                        >
-                                            Edit
-                                        </button>
-
-                                        <button
-                                            onClick={() =>
-                                                deleteProduct(product._id)
-                                            }
-                                        >
-                                            Delete
-                                        </button>
-                                    </>
-                                )}
-                            </li>
-                        ))}
-                    </ul>
-
-                    {/* ADMIN PRODUCT MANAGEMENT */}
-                    {isAdmin && (
-                        <div>
-                            <h2>
-                                {editingId ? "Edit Product" : "Add Product"}
-                            </h2>
-
-                            <form onSubmit={saveProduct}>
-                                <input
-                                    type="text"
-                                    placeholder="Product Name"
-                                    value={form.name}
-                                    onChange={(e) =>
-                                        updateField("name", e.target.value)
-                                    }
-                                    required
-                                />
-
-                                <select
-                                    value={form.category}
-                                    onChange={(e) =>
-                                        updateField("category", e.target.value)
-                                    }
-                                >
-                                    <option value="sheep">Sheep</option>
-                                    <option value="grass">Clover / Grass</option>
-                                    <option value="seedling">Seedling</option>
-                                </select>
-
-                                <input
-                                    type="text"
-                                    placeholder="Description"
-                                    value={form.description}
-                                    onChange={(e) =>
-                                        updateField(
-                                            "description",
-                                            e.target.value
-                                        )
-                                    }
-                                />
-
-                                <input
-                                    type="number"
-                                    placeholder="Price"
-                                    min="0"
-                                    value={form.price}
-                                    onChange={(e) =>
-                                        updateField("price", e.target.value)
-                                    }
-                                    required
-                                />
-
-                                <input
-                                    type="number"
-                                    placeholder="Quantity"
-                                    min="0"
-                                    value={form.quantity}
-                                    onChange={(e) =>
-                                        updateField("quantity", e.target.value)
-                                    }
-                                    required
-                                />
-
-                                <button type="submit">
-                                    {editingId ? "Save Changes" : "Add Product"}
-                                </button>
-
-                                {editingId && (
-                                    <button
-                                        type="button"
-                                        onClick={cancelEdit}
-                                    >
-                                        Cancel
-                                    </button>
-                                )}
-                            </form>
-                        </div>
-                    )}
-
-                    {!user && (
-                        <p>
-                            Login to access customer features
-                            when ordering is available.
-                        </p>
-                    )}
-                </section>
-            )}
-
-            {/* SERVICES PAGE */}
-            {page === "services" && (
-                <section>
-                    <h2>Farm Services</h2>
-                    <p>Explore the services provided by our farm.</p>
-
-                    <div className="gh">
-                        <div className="gh-grid">
-                            <article className="gh-card">
-                                <h3>Sheep Hangar Rental</h3>
-
-                                <p>
-                                    Rent a whole hangar for your sheep.
-                                    View its capacity, monthly rent,
-                                    and caretaker profit percentage.
-                                </p>
-
-                                <p>
-                                    Choose optional farm-provided feeding
-                                    for an additional percentage of profit.
-                                </p>
-
-                                <button
-                                    onClick={() => setService("raising")}
-                                >
-                                    Rent a Sheep Hangar
-                                </button>
-                            </article>
-
-                            <article className="gh-card">
-                                <h3>Greenhouse Rental</h3>
-
-                                <p>
-                                    Choose a greenhouse for your crops.
-                                    View its size, monthly price,
-                                    and available rental dates.
-                                </p>
-
-                                <button
-                                    onClick={() => setService("greenhouse")}
-                                >
-                                    Greenhouse Rental
-                                </button>
-                            </article>
-                        </div>
-
-                        {user && (
-                            <button
-                                onClick={() => setService("old-contracts")}
-                            >
-                                Previous Sheep Contracts
-                            </button>
-                        )}
-                    </div>
-
-                    <hr />
-
-                    {/* NEW SHEEP HANGAR RENTALS */}
-                    {service === "raising" && (
-                        <Hangars
-                            key={user?._id || token || "guest"}
-                            token={token}
-                            user={user}
-                            onLogin={() => navigate("account")}
-                        />
-                    )}
-
-                    {/* GREENHOUSE RENTALS */}
-                    {service === "greenhouse" && (
-                        <Greenhouses
-                            key={user?._id || token || "guest"}
-                            token={token}
-                            user={user}
-                            onLogin={() => navigate("account")}
-                        />
-                    )}
-
-                    {/* PREVIOUS SHEEP CONTRACT SYSTEM */}
-                    {service === "old-contracts" && user && (
-                        <Contracts
-                            key={user?._id || token}
-                            token={token}
-                            user={user}
-                            products={products}
-                        />
-                    )}
-                </section>
-            )}
+            <Home user={null} navigate={navigate} openService={openService} />
         </div>
     );
 }
-
 export default App;

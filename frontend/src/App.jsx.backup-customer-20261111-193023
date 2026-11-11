@@ -1,0 +1,575 @@
+import { useState, useEffect } from "react";
+import Contracts from "./Contracts";
+import Greenhouses from "./Greenhouses";
+import Hangars from "./Hangars";
+import AdminDashboard from "./AdminDashboard";
+import Home from "./Home";
+
+const EMPTY_FORM = {
+    name: "",
+    category: "sheep",
+    description: "",
+    price: "",
+    quantity: ""
+};
+
+const EMPTY_AUTH = {
+    name: "",
+    email: "",
+    password: ""
+};
+
+function App() {
+    const [page, setPage] = useState("home");
+    const [service, setService] = useState("");
+
+    const [products, setProducts] = useState([]);
+    const [form, setForm] = useState(EMPTY_FORM);
+    const [editingId, setEditingId] = useState(null);
+    const [message, setMessage] = useState("");
+
+    const [token, setToken] = useState(localStorage.getItem("token"));
+    const [user, setUser] = useState(null);
+    const [authMode, setAuthMode] = useState("login");
+    const [authForm, setAuthForm] = useState(EMPTY_AUTH);
+
+    const isAdmin = user?.role === "admin";
+
+    function navigate(nextPage) {
+        setPage(nextPage);
+        setMessage("");
+    }
+
+    function openService(serviceName) {
+        setService(serviceName);
+        navigate("services");
+    }
+
+    function api(url, options = {}) {
+        return fetch(url, {
+            ...options,
+            headers: {
+                "Content-Type": "application/json",
+                ...(token ? { Authorization: `Bearer ${token}` } : {})
+            }
+        });
+    }
+
+    useEffect(() => {
+        fetch("/api/products")
+            .then((res) => {
+                if (!res.ok) throw new Error("Could not load products");
+                return res.json();
+            })
+            .then((data) => setProducts(data))
+            .catch((err) => setMessage(err.message));
+    }, []);
+
+    useEffect(() => {
+        if (!token) return;
+
+        fetch("/api/auth/me", {
+            headers: { Authorization: `Bearer ${token}` }
+        })
+            .then((res) => {
+                if (!res.ok) throw new Error("Invalid session");
+                return res.json();
+            })
+            .then((data) => setUser(data.user))
+            .catch(() => {
+                localStorage.removeItem("token");
+                setToken(null);
+                setUser(null);
+            });
+    }, [token]);
+
+    function logout() {
+        localStorage.removeItem("token");
+        setToken(null);
+        setUser(null);
+        navigate("home");
+    }
+
+    async function submitAuth(e) {
+        e.preventDefault();
+
+        try {
+            const response = await fetch(`/api/auth/${authMode}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(authForm)
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || "Request failed");
+            }
+
+            localStorage.setItem("token", data.token);
+            setToken(data.token);
+            setUser(data.user);
+            setAuthForm(EMPTY_AUTH);
+            setMessage(`Welcome, ${data.user.name}!`);
+            setPage("home");
+        } catch (err) {
+            setMessage(err.message);
+        }
+    }
+
+    function updateField(field, value) {
+        setForm({ ...form, [field]: value });
+    }
+
+    function startEdit(product) {
+        setEditingId(product._id);
+
+        setForm({
+            name: product.name,
+            category: product.category,
+            description: product.description || "",
+            price: String(product.price),
+            quantity: String(product.quantity)
+        });
+
+        setMessage("");
+    }
+
+    function cancelEdit() {
+        setEditingId(null);
+        setForm(EMPTY_FORM);
+    }
+
+    async function saveProduct(e) {
+        e.preventDefault();
+
+        const payload = {
+            ...form,
+            price: Number(form.price),
+            quantity: Number(form.quantity)
+        };
+
+        const isEdit = editingId !== null;
+
+        try {
+            const response = await api(
+                isEdit ? `/api/products/${editingId}` : "/api/products",
+                {
+                    method: isEdit ? "PUT" : "POST",
+                    body: JSON.stringify(payload)
+                }
+            );
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || "Request failed");
+            }
+
+            setProducts((current) =>
+                isEdit
+                    ? current.map((p) => p._id === data._id ? data : p)
+                    : [data, ...current]
+            );
+
+            setMessage(
+                isEdit ? "Product updated!" : "Product added successfully!"
+            );
+
+            cancelEdit();
+        } catch (err) {
+            setMessage(err.message);
+        }
+    }
+
+    async function deleteProduct(id) {
+        if (!window.confirm("Delete this product?")) return;
+
+        try {
+            const response = await api(`/api/products/${id}`, {
+                method: "DELETE"
+            });
+
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.message || "Failed to delete product");
+            }
+
+            setProducts((current) =>
+                current.filter((p) => p._id !== id)
+            );
+
+            setMessage("Product deleted");
+        } catch (err) {
+            setMessage(err.message);
+        }
+    }
+
+    // Show the admin dashboard after all hooks and handler functions.
+    if (isAdmin) {
+        return (
+            <AdminDashboard
+                token={token}
+                user={user}
+                logout={logout}
+                products={products}
+                form={form}
+                editingId={editingId}
+                message={message}
+                updateField={updateField}
+                saveProduct={saveProduct}
+                startEdit={startEdit}
+                deleteProduct={deleteProduct}
+                cancelEdit={cancelEdit}
+            />
+        );
+    }
+
+    return (
+        <div className="public-shell">
+            <header>
+                <h1>AgroHub</h1>
+                <p>Your Farm Marketplace and Services</p>
+
+                <nav>
+                    <button onClick={() => navigate("home")}>
+                        Home
+                    </button>{" "}
+
+                    <button onClick={() => navigate("products")}>
+                        Shop Products
+                    </button>{" "}
+
+                    <button onClick={() => navigate("services")}>
+                        Farm Services
+                    </button>{" "}
+
+                    {user ? (
+                        <button onClick={logout}>Logout</button>
+                    ) : (
+                        <button onClick={() => navigate("account")}>
+                            Login / Register
+                        </button>
+                    )}
+                </nav>
+
+                {user && (
+                    <p>
+                        Logged in as {user.name} ({user.role})
+                    </p>
+                )}
+            </header>
+
+            <hr />
+
+            <p role="status">{message}</p>
+
+            {/* HOME PAGE */}
+            {page === "home" && (
+                <Home
+                    user={user}
+                    navigate={navigate}
+                    openService={openService}
+                />
+            )}
+
+            {/* ACCOUNT PAGE */}
+            {page === "account" && !user && (
+                <section>
+                    <h2>
+                        {authMode === "login" ? "Login" : "Register"}
+                    </h2>
+
+                    <form onSubmit={submitAuth}>
+                        {authMode === "register" && (
+                            <input
+                                type="text"
+                                placeholder="Name"
+                                value={authForm.name}
+                                onChange={(e) =>
+                                    setAuthForm({
+                                        ...authForm,
+                                        name: e.target.value
+                                    })
+                                }
+                                required
+                            />
+                        )}
+
+                        <input
+                            type="email"
+                            placeholder="Email"
+                            value={authForm.email}
+                            onChange={(e) =>
+                                setAuthForm({
+                                    ...authForm,
+                                    email: e.target.value
+                                })
+                            }
+                            required
+                        />
+
+                        <input
+                            type="password"
+                            placeholder="Password (min 6 characters)"
+                            minLength="6"
+                            value={authForm.password}
+                            onChange={(e) =>
+                                setAuthForm({
+                                    ...authForm,
+                                    password: e.target.value
+                                })
+                            }
+                            required
+                        />
+
+                        <button type="submit">
+                            {authMode === "login" ? "Login" : "Register"}
+                        </button>
+                    </form>
+
+                    <button
+                        onClick={() =>
+                            setAuthMode(
+                                authMode === "login" ? "register" : "login"
+                            )
+                        }
+                    >
+                        {authMode === "login"
+                            ? "Need an account? Register"
+                            : "Have an account? Login"}
+                    </button>
+                </section>
+            )}
+
+            {/* PRODUCTS PAGE */}
+            {page === "products" && (
+                <section>
+                    <h2>Shop Farm Products</h2>
+                    <p>Explore the farm's available products.</p>
+
+                    <h3>Available Products</h3>
+
+                    {products.length === 0 && (
+                        <p>No products available.</p>
+                    )}
+
+                    <ul>
+                        {products.map((product) => (
+                            <li key={product._id}>
+                                <strong>{product.name}</strong>
+                                {" "}({product.category})
+                                {" - "}{product.price} EGP
+                                {" - "}
+
+                                {product.quantity > 0
+                                    ? `Available: ${product.quantity}`
+                                    : "Out of stock"}
+
+                                {product.description && (
+                                    <p>{product.description}</p>
+                                )}
+
+                                {isAdmin && (
+                                    <>
+                                        <button
+                                            onClick={() => startEdit(product)}
+                                        >
+                                            Edit
+                                        </button>
+
+                                        <button
+                                            onClick={() =>
+                                                deleteProduct(product._id)
+                                            }
+                                        >
+                                            Delete
+                                        </button>
+                                    </>
+                                )}
+                            </li>
+                        ))}
+                    </ul>
+
+                    {/* ADMIN PRODUCT MANAGEMENT */}
+                    {isAdmin && (
+                        <div>
+                            <h2>
+                                {editingId ? "Edit Product" : "Add Product"}
+                            </h2>
+
+                            <form onSubmit={saveProduct}>
+                                <input
+                                    type="text"
+                                    placeholder="Product Name"
+                                    value={form.name}
+                                    onChange={(e) =>
+                                        updateField("name", e.target.value)
+                                    }
+                                    required
+                                />
+
+                                <select
+                                    value={form.category}
+                                    onChange={(e) =>
+                                        updateField("category", e.target.value)
+                                    }
+                                >
+                                    <option value="sheep">Sheep</option>
+                                    <option value="grass">Clover / Grass</option>
+                                    <option value="seedling">Seedling</option>
+                                </select>
+
+                                <input
+                                    type="text"
+                                    placeholder="Description"
+                                    value={form.description}
+                                    onChange={(e) =>
+                                        updateField(
+                                            "description",
+                                            e.target.value
+                                        )
+                                    }
+                                />
+
+                                <input
+                                    type="number"
+                                    placeholder="Price"
+                                    min="0"
+                                    value={form.price}
+                                    onChange={(e) =>
+                                        updateField("price", e.target.value)
+                                    }
+                                    required
+                                />
+
+                                <input
+                                    type="number"
+                                    placeholder="Quantity"
+                                    min="0"
+                                    value={form.quantity}
+                                    onChange={(e) =>
+                                        updateField("quantity", e.target.value)
+                                    }
+                                    required
+                                />
+
+                                <button type="submit">
+                                    {editingId ? "Save Changes" : "Add Product"}
+                                </button>
+
+                                {editingId && (
+                                    <button
+                                        type="button"
+                                        onClick={cancelEdit}
+                                    >
+                                        Cancel
+                                    </button>
+                                )}
+                            </form>
+                        </div>
+                    )}
+
+                    {!user && (
+                        <p>
+                            Login to access customer features
+                            when ordering is available.
+                        </p>
+                    )}
+                </section>
+            )}
+
+            {/* SERVICES PAGE */}
+            {page === "services" && (
+                <section>
+                    <h2>Farm Services</h2>
+                    <p>Explore the services provided by our farm.</p>
+
+                    <div className="gh">
+                        <div className="gh-grid">
+                            <article className="gh-card">
+                                <h3>Sheep Hangar Rental</h3>
+
+                                <p>
+                                    Rent a whole hangar for your sheep.
+                                    View its capacity, monthly rent,
+                                    and caretaker profit percentage.
+                                </p>
+
+                                <p>
+                                    Choose optional farm-provided feeding
+                                    for an additional percentage of profit.
+                                </p>
+
+                                <button
+                                    onClick={() => setService("raising")}
+                                >
+                                    Rent a Sheep Hangar
+                                </button>
+                            </article>
+
+                            <article className="gh-card">
+                                <h3>Greenhouse Rental</h3>
+
+                                <p>
+                                    Choose a greenhouse for your crops.
+                                    View its size, monthly price,
+                                    and available rental dates.
+                                </p>
+
+                                <button
+                                    onClick={() => setService("greenhouse")}
+                                >
+                                    Greenhouse Rental
+                                </button>
+                            </article>
+                        </div>
+
+                        {user && (
+                            <button
+                                onClick={() => setService("old-contracts")}
+                            >
+                                Previous Sheep Contracts
+                            </button>
+                        )}
+                    </div>
+
+                    <hr />
+
+                    {/* NEW SHEEP HANGAR RENTALS */}
+                    {service === "raising" && (
+                        <Hangars
+                            key={user?._id || token || "guest"}
+                            token={token}
+                            user={user}
+                            onLogin={() => navigate("account")}
+                        />
+                    )}
+
+                    {/* GREENHOUSE RENTALS */}
+                    {service === "greenhouse" && (
+                        <Greenhouses
+                            key={user?._id || token || "guest"}
+                            token={token}
+                            user={user}
+                            onLogin={() => navigate("account")}
+                        />
+                    )}
+
+                    {/* PREVIOUS SHEEP CONTRACT SYSTEM */}
+                    {service === "old-contracts" && user && (
+                        <Contracts
+                            key={user?._id || token}
+                            token={token}
+                            user={user}
+                            products={products}
+                        />
+                    )}
+                </section>
+            )}
+        </div>
+    );
+}
+
+export default App;
+

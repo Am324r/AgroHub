@@ -45,6 +45,7 @@ router.post("/", async (req, res) => {
     }
 
     const product = await Product.findById(productId);
+    if (product?.unit === "kg") return res.status(400).json({ message: "This product is priced per kg. Use sheep hangar rental for new sheep-raising requests." });
     if (!product || product.category !== "sheep") {
         return res.status(400).json({ message: "Choose a valid sheep product" });
     }

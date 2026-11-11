@@ -1,0 +1,431 @@
+/* Applied only while the public homepage is visible. */
+body:has(.public-home) {
+    margin: 0;
+    background: #f8faf5;
+    color: #253a2b;
+    color-scheme: light;
+}
+
+#root:has(.public-home) {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    border: none;
+    text-align: left;
+}
+
+.public-shell:has(.public-home) {
+    color: #253a2b;
+    font-family: Arial, Helvetica, sans-serif;
+    line-height: 1.6;
+}
+
+.public-shell:has(.public-home) > header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 20px max(24px, calc((100vw - 1200px) / 2));
+    border-bottom: 1px solid #dfe7db;
+    background: white;
+}
+
+.public-shell:has(.public-home) > header > h1 {
+    margin: 0;
+    color: #205c36;
+    font: 700 28px/1.2 Arial, Helvetica, sans-serif;
+    letter-spacing: -1px;
+}
+
+.public-shell:has(.public-home) > header > p {
+    margin: 0;
+    color: #627362;
+    font-size: 13px;
+}
+
+.public-shell:has(.public-home) > header > nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.public-shell:has(.public-home) > header button {
+    padding: 10px 14px;
+    border: 1px solid #d9e4d4;
+    border-radius: 8px;
+    background: white;
+    color: #205c36;
+    font: 600 14px Arial, Helvetica, sans-serif;
+    cursor: pointer;
+}
+
+.public-shell:has(.public-home) > header button:hover {
+    background: #edf4e7;
+}
+
+.public-shell:has(.public-home) > hr {
+    display: none;
+}
+
+.public-shell:has(.public-home) > p[role="status"] {
+    margin: 0;
+    padding: 0 24px;
+}
+
+.public-shell:has(.public-home) > p[role="status"]:empty {
+    display: none;
+}
+
+.public-home,
+.public-home * {
+    box-sizing: border-box;
+}
+
+.public-home {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 32px 24px 0;
+    color: #253a2b;
+    text-align: left;
+}
+
+.public-home h1,
+.public-home h2,
+.public-home h3 {
+    color: #173d25;
+    font-family: Arial, Helvetica, sans-serif;
+    font-weight: 700;
+    letter-spacing: normal;
+}
+
+.public-home p {
+    margin: 0;
+    color: #63735f;
+    font-size: 15px;
+    line-height: 1.75;
+}
+
+.public-home button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding: 13px 20px;
+    border: 1px solid transparent;
+    border-radius: 9px;
+    background: #205c36;
+    color: white;
+    font: 600 14px/1.4 Arial, Helvetica, sans-serif;
+    cursor: pointer;
+}
+
+.public-home button:hover {
+    background: #16472a;
+}
+
+.public-home button:focus-visible,
+.public-shell:has(.public-home) > header button:focus-visible {
+    outline: 3px solid #c9942c;
+    outline-offset: 4px;
+}
+
+.home-hero {
+    display: grid;
+    grid-template-columns: 1.15fr 1fr;
+    min-height: 420px;
+    overflow: hidden;
+    border: 1px solid #dce6d5;
+    border-radius: 24px;
+    background: #edf3e5;
+}
+
+.home-hero-content {
+    align-self: center;
+    padding: 45px;
+}
+
+.home-eyebrow {
+    display: inline-block;
+    margin-bottom: 14px;
+    color: #678145;
+    font-size: 11px;
+    font-weight: bold;
+    letter-spacing: 2px;
+}
+
+.public-home .home-hero h1 {
+    margin: 0 0 20px;
+    font-size: clamp(32px, 4vw, 50px);
+    line-height: 1.12;
+    letter-spacing: -1.5px;
+}
+
+.home-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 25px;
+}
+
+.public-home .home-secondary {
+    border-color: #adc29c;
+    background: transparent;
+    color: #205c36;
+}
+
+.public-home .home-secondary:hover {
+    background: #dfead5;
+}
+
+/* Farm illustration made with CSS. */
+.home-hero-art {
+    position: relative;
+    min-height: 360px;
+    overflow: hidden;
+    background: linear-gradient(145deg, #e5efdc, #cadfb6);
+}
+
+.home-sun {
+    position: absolute;
+    top: 48px;
+    right: 48px;
+    width: 85px;
+    height: 85px;
+    border-radius: 50%;
+    background: #f2d687;
+}
+
+.home-greenhouse {
+    position: absolute;
+    bottom: 95px;
+    left: 14%;
+    width: 72%;
+    z-index: 2;
+}
+
+.home-roof {
+    height: 110px;
+    border: 5px solid #497950;
+    border-bottom: 0;
+    border-radius: 150px 150px 0 0;
+    background: #ffffff66;
+}
+
+.home-greenhouse-body {
+    display: flex;
+    justify-content: space-around;
+    align-items: end;
+    height: 120px;
+    padding-bottom: 12px;
+    border: 5px solid #497950;
+    border-top: 0;
+    background: repeating-linear-gradient(
+        90deg,
+        #ffffff66 0,
+        #ffffff66 30%,
+        #497950 30%,
+        #497950 32%
+    );
+}
+
+.home-greenhouse-body span {
+    font-size: 42px;
+}
+
+.home-field {
+    position: absolute;
+    right: -25%;
+    bottom: -100px;
+    width: 150%;
+    height: 230px;
+    border-radius: 50%;
+    background: #9fbe80;
+}
+
+.home-art-label {
+    position: absolute;
+    z-index: 3;
+    right: 20px;
+    bottom: 28px;
+    left: 20px;
+    color: #24492c;
+    font-size: 14px;
+    font-weight: bold;
+    text-align: center;
+}
+
+.home-section {
+    padding: 65px 0;
+}
+
+.home-section-heading {
+    margin-bottom: 28px;
+}
+
+.public-home h2 {
+    margin: 0 0 12px;
+    font-size: 29px;
+    line-height: 1.25;
+}
+
+.public-home h3 {
+    margin: 12px 0;
+    font-size: 20px;
+    line-height: 1.35;
+}
+
+.home-services-grid,
+.home-steps-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 22px;
+}
+
+.home-service-card {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 28px;
+    border: 1px solid #dce5d6;
+    border-radius: 16px;
+    background: white;
+    box-shadow: 0 5px 18px #1e452008;
+}
+
+.home-card-icon {
+    display: grid;
+    width: 58px;
+    height: 58px;
+    margin-bottom: 22px;
+    place-items: center;
+    border-radius: 15px;
+    background: #edf4e5;
+    font-size: 29px;
+}
+
+.home-card-label {
+    color: #6b8058;
+    font-size: 10px;
+    font-weight: bold;
+    letter-spacing: 1.5px;
+}
+
+.home-service-card p {
+    flex-grow: 1;
+    margin-bottom: 25px;
+}
+
+.home-service-card button {
+    width: 100%;
+}
+
+.home-how {
+    padding: 35px;
+    border: 1px solid #dfe7d7;
+    border-radius: 20px;
+    background: #eff4e9;
+}
+
+.home-steps-grid article {
+    padding: 10px 0;
+}
+
+.home-step-number {
+    color: #78995e;
+    font-size: 30px;
+    font-weight: bold;
+}
+
+.home-account-banner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 28px;
+    margin: 55px 0;
+    padding: 35px;
+    border-radius: 18px;
+    background: #19482c;
+}
+
+.public-home .home-account-banner h2 {
+    color: white;
+}
+
+.public-home .home-account-banner p {
+    max-width: 650px;
+    color: #d2dfcc;
+}
+
+.public-home .home-account-banner button {
+    flex-shrink: 0;
+    background: #e7efdd;
+    color: #19482c;
+}
+
+.home-footer {
+    margin-top: 40px;
+    padding: 25px 0;
+    border-top: 1px solid #dce5d6;
+}
+
+.home-footer strong {
+    color: #205c36;
+    font-size: 22px;
+}
+
+@media (max-width: 900px) {
+    .home-hero {
+        grid-template-columns: 1fr;
+    }
+
+    .home-hero-art {
+        min-height: 300px;
+    }
+
+    .home-greenhouse {
+        left: 25%;
+        width: 50%;
+        max-width: 350px;
+    }
+
+    .home-services-grid,
+    .home-steps-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .home-account-banner {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}
+
+@media (max-width: 500px) {
+    .public-home {
+        padding: 18px 14px 0;
+    }
+
+    .home-hero-content,
+    .home-how,
+    .home-account-banner {
+        padding: 25px;
+    }
+
+    .home-section {
+        padding: 40px 0;
+    }
+
+    .home-actions {
+        flex-direction: column;
+    }
+
+    .home-greenhouse {
+        left: 15%;
+        width: 70%;
+    }
+
+    .public-shell:has(.public-home) > header {
+        padding: 18px;
+    }
+}
